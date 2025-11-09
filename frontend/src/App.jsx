@@ -93,7 +93,7 @@ function App() {
     formData.append('audio', audioFile)
 
     try {
-      const response = await fetch('/api/predict', {
+      const response = await fetch('/api/predict-enhanced', {
         method: 'POST',
         body: formData,
       })
@@ -124,22 +124,54 @@ function App() {
     setRecordingTime(0)
   }
 
+  const formatAgentContent = (text) => {
+    if (!text) return ''
+
+    // Convert markdown-like formatting to HTML
+    let formatted = text
+      // Bold text: **text** -> <strong>text</strong>
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Headers: ## text -> <h5>text</h5>
+      .replace(/^##\s+(.+)$/gm, '<h5>$1</h5>')
+      // Bullet points: - text -> <li>text</li>
+      .replace(/^-\s+(.+)$/gm, '<li>$1</li>')
+      // Numbered lists: 1. text -> <li>text</li>
+      .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+      // Line breaks
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br/>')
+
+    // Wrap in paragraph if not already wrapped
+    if (!formatted.startsWith('<')) {
+      formatted = '<p>' + formatted + '</p>'
+    }
+
+    // Wrap consecutive <li> in <ul>
+    formatted = formatted.replace(/(<li>.*?<\/li>)(?:\s*<li>)/gs, (match) => {
+      return '<ul>' + match.replace(/<\/li>\s*$/,'</li></ul>')
+    })
+    formatted = formatted.replace(/(<li>.*?<\/li>)/g, '<ul>$1</ul>')
+
+    return formatted
+  }
+
   const getRiskColor = (riskLevel) => {
     const colors = {
+      'VERY LOW': '#10b981',  // Bright green - excellent!
       'LOW': '#10b981',
       'MODERATE': '#f59e0b',
       'HIGH': '#f97316',
       'VERY HIGH': '#ef4444'
     }
-    return colors[riskLevel] || '#6b7280'
+    return colors[riskLevel] || '#10b981'  // Default to green
   }
 
   return (
     <div className="app">
       <div className="container">
         <header>
-          <h1>🎤 Parkinson's Disease Voice Detector</h1>
-          <p className="subtitle">AI-powered early screening through voice analysis</p>
+          <h1>Parkinson's Disease Voice Analysis</h1>
+          <p className="subtitle">AI-Powered Early Detection Through Voice Biomarkers</p>
         </header>
 
         <div className="card">
@@ -148,7 +180,7 @@ function App() {
           <div className="input-section">
             <div className="upload-area">
               <label htmlFor="file-upload" className="upload-label">
-                📁 Upload Audio File
+                Upload Audio File
                 <input
                   id="file-upload"
                   type="file"
@@ -170,7 +202,7 @@ function App() {
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={loading}
               >
-                {isRecording ? '⏹️ Stop Recording' : '🎙️ Record Voice (5s)'}
+                {isRecording ? 'Stop Recording' : 'Record Voice (5 seconds)'}
               </button>
               {isRecording && (
                 <p className="recording-timer">Recording... {recordingTime}s / 5s</p>
@@ -183,13 +215,13 @@ function App() {
             onClick={analyzeAudio}
             disabled={!audioFile || loading || isRecording}
           >
-            {loading ? 'Analyzing...' : '🔬 Analyze Audio'}
+            {loading ? 'Analyzing...' : 'Analyze Audio'}
           </button>
         </div>
 
         {error && (
           <div className="card error-card">
-            <p className="error-message">❌ {error}</p>
+            <p className="error-message">Error: {error}</p>
           </div>
         )}
 
@@ -200,60 +232,139 @@ function App() {
             <div className="result-main">
               <div
                 className="risk-badge"
-                style={{ backgroundColor: getRiskColor(result.risk_level) }}
+                style={{ backgroundColor: getRiskColor(result.ml_result?.risk_level || result.risk_level) }}
               >
-                {result.risk_level} RISK
+                {result.ml_result?.risk_level || result.risk_level} RISK
               </div>
 
               <div className="probability">
                 <div className="prob-label">Parkinson's Probability</div>
                 <div className="prob-value">
-                  {(result.pd_probability * 100).toFixed(1)}%
+                  {((result.ml_result?.pd_probability || result.pd_probability) * 100).toFixed(1)}%
                 </div>
               </div>
             </div>
 
             <div className="recommendation">
-              <strong>Recommendation:</strong> {result.recommendation}
+              <strong>Recommendation:</strong> {result.ml_result?.recommendation || result.recommendation}
             </div>
 
-            {result.clinical_features && (
+            {result.summary && (
+              <div className="agent-summary">
+                <h3>Nemotron AI Multi-Agent Analysis</h3>
+                <div className="agent-stats">
+                  <div className="stat-item">
+                    <span className="stat-label">Agents Executed:</span>
+                    <span className="stat-value">{result.summary.agents_executed}/7</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Analysis Pathway:</span>
+                    <span className="stat-value">{result.summary.pathway?.replace(/_/g, ' ').toUpperCase()}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(result.clinical_features || result.ml_result?.clinical_features) && (
               <div className="clinical-markers">
                 <h3>Clinical Voice Markers</h3>
                 <div className="clinical-grid">
                   <div className="clinical-card">
-                    <div className="clinical-icon">📊</div>
                     <div className="clinical-label">Jitter</div>
-                    <div className="clinical-value">{result.clinical_features.jitter.toFixed(2)}%</div>
+                    <div className="clinical-value">{(result.clinical_features?.jitter || result.ml_result?.clinical_features?.jitter).toFixed(2)}%</div>
                     <div className="clinical-status">
-                      {result.clinical_features.jitter < 1.0 ? '✅ Excellent' :
-                       result.clinical_features.jitter < 2.0 ? '⚠️ Borderline' : '❌ Elevated'}
+                      {(result.clinical_features?.jitter || result.ml_result?.clinical_features?.jitter) < 1.0 ? 'Excellent' :
+                       (result.clinical_features?.jitter || result.ml_result?.clinical_features?.jitter) < 2.0 ? 'Borderline' : 'Elevated'}
                     </div>
                     <div className="clinical-desc">Voice frequency stability</div>
                   </div>
 
                   <div className="clinical-card">
-                    <div className="clinical-icon">〰️</div>
                     <div className="clinical-label">Shimmer</div>
-                    <div className="clinical-value">{result.clinical_features.shimmer.toFixed(2)}%</div>
+                    <div className="clinical-value">{(result.clinical_features?.shimmer || result.ml_result?.clinical_features?.shimmer).toFixed(2)}%</div>
                     <div className="clinical-status">
-                      {result.clinical_features.shimmer < 5.0 ? '✅ Good' :
-                       result.clinical_features.shimmer < 10.0 ? '⚠️ Moderate' : '❌ High'}
+                      {(result.clinical_features?.shimmer || result.ml_result?.clinical_features?.shimmer) < 5.0 ? 'Excellent' :
+                       (result.clinical_features?.shimmer || result.ml_result?.clinical_features?.shimmer) < 10.0 ? 'Moderate' : 'High'}
                     </div>
                     <div className="clinical-desc">Voice amplitude variation</div>
                   </div>
 
                   <div className="clinical-card">
-                    <div className="clinical-icon">🎵</div>
                     <div className="clinical-label">HNR</div>
-                    <div className="clinical-value">{result.clinical_features.hnr.toFixed(1)} dB</div>
+                    <div className="clinical-value">{(result.clinical_features?.hnr || result.ml_result?.clinical_features?.hnr).toFixed(1)} dB</div>
                     <div className="clinical-status">
-                      {result.clinical_features.hnr > 20 ? '✅ Excellent' :
-                       result.clinical_features.hnr > 15 ? '✅ Good' : '⚠️ Phone Quality'}
+                      {(result.clinical_features?.hnr || result.ml_result?.clinical_features?.hnr) > 20 ? 'Excellent' :
+                       (result.clinical_features?.hnr || result.ml_result?.clinical_features?.hnr) > 15 ? 'Good' : 'Phone Quality'}
                     </div>
                     <div className="clinical-desc">Harmonic-to-noise ratio</div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {result.agent_results && (
+              <div className="agent-results">
+                <h3>AI Agent Analysis</h3>
+
+                {result.agent_results.orchestrator?.plan && (
+                  <div className="agent-section">
+                    <h4>Orchestration Plan</h4>
+                    <div className="agent-content" dangerouslySetInnerHTML={{__html: formatAgentContent(result.agent_results.orchestrator.plan)}}></div>
+                    <div className="agent-meta">
+                      Pathway: <strong>{result.agent_results.orchestrator.pathway?.replace(/_/g, ' ').toUpperCase()}</strong>
+                    </div>
+                  </div>
+                )}
+
+                {result.agent_results.explainer?.explanation && (
+                  <div className="agent-section">
+                    <h4>Model Explanation</h4>
+                    <div className="agent-content" dangerouslySetInnerHTML={{__html: formatAgentContent(result.agent_results.explainer.explanation)}}></div>
+                  </div>
+                )}
+
+                {result.agent_results.research?.analysis && (
+                  <div className="agent-section">
+                    <h4>Research Findings</h4>
+                    <div className="agent-content" dangerouslySetInnerHTML={{__html: formatAgentContent(result.agent_results.research.analysis)}}></div>
+                    {result.agent_results.research.papers_analyzed > 0 && (
+                      <div className="agent-meta">
+                        Analyzed {result.agent_results.research.papers_analyzed} recent papers
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {result.agent_results.risk?.trajectory_analysis && (
+                  <div className="agent-section">
+                    <h4>Risk Assessment</h4>
+                    <div className="agent-content" dangerouslySetInnerHTML={{__html: formatAgentContent(result.agent_results.risk.trajectory_analysis)}}></div>
+                    {result.agent_results.risk.confidence && (
+                      <div className="agent-meta">
+                        Confidence: <strong>{result.agent_results.risk.confidence}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {result.agent_results.treatment?.treatment_plan && (
+                  <div className="agent-section">
+                    <h4>Treatment Plan</h4>
+                    <div className="agent-content" dangerouslySetInnerHTML={{__html: formatAgentContent(result.agent_results.treatment.treatment_plan)}}></div>
+                    {result.agent_results.treatment.trials_found > 0 && (
+                      <div className="agent-meta">
+                        Found {result.agent_results.treatment.trials_found} clinical trials nearby
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {result.agent_results.monitoring?.content && (
+                  <div className="agent-section">
+                    <h4>Monitoring Schedule</h4>
+                    <div className="agent-content" dangerouslySetInnerHTML={{__html: formatAgentContent(result.agent_results.monitoring.content)}}></div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -280,7 +391,7 @@ function App() {
             )}
 
             <button className="reset-button" onClick={reset}>
-              🔄 Analyze Another Recording
+              Analyze Another Recording
             </button>
 
             <div className="disclaimer">
@@ -292,7 +403,7 @@ function App() {
         )}
 
         <footer>
-          <p>Powered by Machine Learning • 91% Accuracy • 100% Recall</p>
+          <p>Powered by Nemotron AI | Clinical-Grade Voice Analysis</p>
         </footer>
       </div>
     </div>

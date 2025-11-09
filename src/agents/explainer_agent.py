@@ -3,7 +3,7 @@
 Explainer Agent - Explains why ML model made its prediction
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, List
 from .base_agent import BaseAgent
 
 
@@ -18,9 +18,9 @@ class ExplainerAgent(BaseAgent):
         self.start()
 
         try:
-            ml_result = context.get('ml_result', {})
-            pd_prob = ml_result.get('pd_probability', 0)
-            clinical_features = ml_result.get('clinical_features', {})
+            ml_result = context.get("ml_result", {})
+            pd_prob = ml_result.get("pd_probability", 0)
+            clinical_features = ml_result.get("clinical_features", {})
 
             prompt = f"""Explain why the ML model predicted this Parkinson's disease probability.
 
@@ -46,7 +46,7 @@ Be clear and educational for patients."""
                 success=True,
                 prediction=pd_prob,
                 explanation=explanation,
-                key_factors=self._extract_key_factors(clinical_features, pd_prob)
+                key_factors=self._extract_key_factors(clinical_features, pd_prob),
             )
 
             self.complete(result)
@@ -60,63 +60,77 @@ Be clear and educational for patients."""
         """Extract key contributing factors"""
         factors = []
 
-        jitter = features.get('jitter', 0)
-        shimmer = features.get('shimmer', 0)
-        hnr = features.get('hnr', 0)
+        jitter = features.get("jitter", 0)
+        shimmer = features.get("shimmer", 0)
+        hnr = features.get("hnr", 0)
 
         # Jitter analysis
         if jitter < 1:
-            factors.append({
-                'feature': 'Jitter',
-                'value': f'{jitter:.2f}%',
-                'status': 'EXCELLENT',
-                'impact': 'Protective factor - reduces risk'
-            })
+            factors.append(
+                {
+                    "feature": "Jitter",
+                    "value": f"{jitter:.2f}%",
+                    "status": "EXCELLENT",
+                    "impact": "Protective factor - reduces risk",
+                }
+            )
         elif jitter > 2:
-            factors.append({
-                'feature': 'Jitter',
-                'value': f'{jitter:.2f}%',
-                'status': 'ELEVATED',
-                'impact': 'Risk factor - increases prediction'
-            })
+            factors.append(
+                {
+                    "feature": "Jitter",
+                    "value": f"{jitter:.2f}%",
+                    "status": "ELEVATED",
+                    "impact": "Risk factor - increases prediction",
+                }
+            )
 
         # Shimmer analysis
         if shimmer < 5:
-            factors.append({
-                'feature': 'Shimmer',
-                'value': f'{shimmer:.2f}%',
-                'status': 'NORMAL',
-                'impact': 'Within healthy range'
-            })
+            factors.append(
+                {
+                    "feature": "Shimmer",
+                    "value": f"{shimmer:.2f}%",
+                    "status": "NORMAL",
+                    "impact": "Within healthy range",
+                }
+            )
         elif shimmer < 7:
-            factors.append({
-                'feature': 'Shimmer',
-                'value': f'{shimmer:.2f}%',
-                'status': 'BORDERLINE',
-                'impact': 'Warrants monitoring'
-            })
+            factors.append(
+                {
+                    "feature": "Shimmer",
+                    "value": f"{shimmer:.2f}%",
+                    "status": "BORDERLINE",
+                    "impact": "Warrants monitoring",
+                }
+            )
         else:
-            factors.append({
-                'feature': 'Shimmer',
-                'value': f'{shimmer:.2f}%',
-                'status': 'ELEVATED',
-                'impact': 'Significant risk factor'
-            })
+            factors.append(
+                {
+                    "feature": "Shimmer",
+                    "value": f"{shimmer:.2f}%",
+                    "status": "ELEVATED",
+                    "impact": "Significant risk factor",
+                }
+            )
 
         # HNR analysis
         if hnr < 10:
-            factors.append({
-                'feature': 'HNR',
-                'value': f'{hnr:.1f} dB',
-                'status': 'LOW',
-                'impact': 'Reduced voice clarity'
-            })
+            factors.append(
+                {
+                    "feature": "HNR",
+                    "value": f"{hnr:.1f} dB",
+                    "status": "LOW",
+                    "impact": "Reduced voice clarity",
+                }
+            )
         elif hnr > 20:
-            factors.append({
-                'feature': 'HNR',
-                'value': f'{hnr:.1f} dB',
-                'status': 'EXCELLENT',
-                'impact': 'Good voice quality'
-            })
+            factors.append(
+                {
+                    "feature": "HNR",
+                    "value": f"{hnr:.1f} dB",
+                    "status": "EXCELLENT",
+                    "impact": "Good voice quality",
+                }
+            )
 
         return factors

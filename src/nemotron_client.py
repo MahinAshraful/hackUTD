@@ -22,15 +22,20 @@ class NemotronClient:
             api_key: Nvidia API key (defaults to env var NVIDIA_API_KEY)
             base_url: API base URL (defaults to Nvidia NIM endpoint)
         """
-        self.api_key = api_key or os.getenv('NVIDIA_API_KEY', 'demo-key-for-hackathon')
-        self.base_url = base_url or os.getenv('NVIDIA_API_BASE',
-            'https://integrate.api.nvidia.com/v1')
+        self.api_key = api_key or os.getenv("NVIDIA_API_KEY", "demo-key-for-hackathon")
+        self.base_url = base_url or os.getenv(
+            "NVIDIA_API_BASE", "https://api.nvcf.nvidia.com/v2/nvcf"
+        )
 
         # DEBUG: Show API key status
         print("🔑 Nemotron API Configuration:")
-        if self.api_key and self.api_key != 'demo-key-for-hackathon':
+        if self.api_key and self.api_key != "demo-key-for-hackathon":
             # Mask the key for security
-            masked_key = self.api_key[:10] + "..." + self.api_key[-4:] if len(self.api_key) > 14 else "***"
+            masked_key = (
+                self.api_key[:10] + "..." + self.api_key[-4:]
+                if len(self.api_key) > 14
+                else "***"
+            )
             print(f"   ✓ API Key loaded: {masked_key}")
         else:
             print(f"   ⚠️  No API key found - using fallback mode")
@@ -44,11 +49,13 @@ class NemotronClient:
         self.temperature = 0.7
         self.max_tokens = 2000
 
-    def chat(self,
-             messages: List[Dict[str, str]],
-             temperature: Optional[float] = None,
-             max_tokens: Optional[int] = None,
-             stream: bool = False) -> Dict[str, Any]:
+    def chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        stream: bool = False,
+    ) -> Dict[str, Any]:
         """
         Send chat completion request to Nemotron
 
@@ -61,11 +68,15 @@ class NemotronClient:
         Returns:
             Response dict with 'content' and metadata
         """
-        url = f"{self.base_url}/chat/completions"
+        # Use proper NVIDIA API endpoint
+        url = "https://integrate.api.nvidia.com/v1/chat/completions"
+
+        # Alternative: If above doesn't work, try build.nvidia.com
+        # url = "https://api.nvcf.nvidia.com/v2/nvcf/pexec/functions/d6fe6881-973b-43d7-8f98-9713123c9b83"
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         payload = {
@@ -73,7 +84,7 @@ class NemotronClient:
             "messages": messages,
             "temperature": temperature or self.temperature,
             "max_tokens": max_tokens or self.max_tokens,
-            "stream": stream
+            "stream": stream,
         }
 
         try:
@@ -83,11 +94,11 @@ class NemotronClient:
             result = response.json()
 
             return {
-                'success': True,
-                'content': result['choices'][0]['message']['content'],
-                'model': result.get('model', self.model),
-                'usage': result.get('usage', {}),
-                'timestamp': datetime.now().isoformat()
+                "success": True,
+                "content": result["choices"][0]["message"]["content"],
+                "model": result.get("model", self.model),
+                "usage": result.get("usage", {}),
+                "timestamp": datetime.now().isoformat(),
             }
 
         except requests.exceptions.RequestException as e:
@@ -100,37 +111,37 @@ class NemotronClient:
         Intelligent fallback when API is unavailable
         Generates contextually appropriate responses based on the prompt
         """
-        last_message = messages[-1]['content'].lower()
+        last_message = messages[-1]["content"].lower()
 
         # Detect what kind of response is needed
-        if 'orchestrate' in last_message or 'plan' in last_message:
+        if "orchestrate" in last_message or "plan" in last_message:
             content = self._generate_orchestration_response(last_message)
-        elif 'research' in last_message or 'pubmed' in last_message:
+        elif "research" in last_message or "pubmed" in last_message:
             content = self._generate_research_response(last_message)
-        elif 'risk' in last_message or 'trajectory' in last_message:
+        elif "risk" in last_message or "trajectory" in last_message:
             content = self._generate_risk_response(last_message)
-        elif 'treatment' in last_message or 'therapy' in last_message:
+        elif "treatment" in last_message or "therapy" in last_message:
             content = self._generate_treatment_response(last_message)
-        elif 'explain' in last_message or 'why' in last_message:
+        elif "explain" in last_message or "why" in last_message:
             content = self._generate_explanation_response(last_message)
-        elif 'report' in last_message:
+        elif "report" in last_message:
             content = self._generate_report_response(last_message)
-        elif 'monitor' in last_message or 'follow-up' in last_message:
+        elif "monitor" in last_message or "follow-up" in last_message:
             content = self._generate_monitoring_response(last_message)
         else:
             content = "Based on the clinical data, I recommend a comprehensive multi-step evaluation."
 
         return {
-            'success': True,
-            'content': content,
-            'model': f'{self.model} (fallback)',
-            'usage': {'total_tokens': len(content.split())},
-            'timestamp': datetime.now().isoformat()
+            "success": True,
+            "content": content,
+            "model": f"{self.model} (fallback)",
+            "usage": {"total_tokens": len(content.split())},
+            "timestamp": datetime.now().isoformat(),
         }
 
     def _generate_orchestration_response(self, prompt: str) -> str:
         """Generate orchestration plan"""
-        if 'low' in prompt or '15%' in prompt or '0.15' in prompt:
+        if "low" in prompt or "15%" in prompt or "0.15" in prompt:
             return """ORCHESTRATION PLAN - LOW RISK PATHWAY
 
 **Risk Analysis:** 15% PD probability with borderline markers
@@ -146,7 +157,12 @@ class NemotronClient:
 
 **Rationale:** Low immediate risk but borderline shimmer warrants evidence-based monitoring approach. Focus on reassurance with preventive measures."""
 
-        elif 'moderate' in prompt or 'high' in prompt or '60%' in prompt or '75%' in prompt:
+        elif (
+            "moderate" in prompt
+            or "high" in prompt
+            or "60%" in prompt
+            or "75%" in prompt
+        ):
             return """ORCHESTRATION PLAN - HIGH RISK PATHWAY
 
 **Risk Analysis:** 68-75% PD probability with multiple elevated markers
@@ -194,7 +210,7 @@ class NemotronClient:
 
     def _generate_risk_response(self, prompt: str) -> str:
         """Generate risk assessment"""
-        if 'low' in prompt:
+        if "low" in prompt:
             return """LONGITUDINAL RISK ASSESSMENT
 
 **Current Risk Profile:** LOW (15% PD probability)
@@ -245,7 +261,7 @@ class NemotronClient:
 
     def _generate_treatment_response(self, prompt: str) -> str:
         """Generate treatment plan"""
-        if 'low' in prompt:
+        if "low" in prompt:
             return """TREATMENT & CARE PLAN - LOW RISK
 
 **Immediate Actions:**
@@ -361,7 +377,7 @@ class NemotronClient:
 
     def _generate_monitoring_response(self, prompt: str) -> str:
         """Generate monitoring schedule"""
-        if 'low' in prompt:
+        if "low" in prompt:
             return """PERSONALIZED MONITORING SCHEDULE - LOW RISK
 
 **Initial Assessment:** Month 0 (Today)
@@ -497,16 +513,13 @@ Month 9, 12, 18, 24: Quarterly Reviews
         messages = [
             {
                 "role": "system",
-                "content": "You are a medical AI assistant specializing in Parkinson's disease diagnosis and treatment planning. Provide evidence-based, clinically accurate responses."
+                "content": "You are a medical AI assistant specializing in Parkinson's disease diagnosis and treatment planning. Provide evidence-based, clinically accurate responses.",
             },
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "user", "content": prompt},
         ]
 
         if context:
             messages[0]["content"] += f"\n\nContext: {json.dumps(context, indent=2)}"
 
         response = self.chat(messages)
-        return response['content']
+        return response["content"]

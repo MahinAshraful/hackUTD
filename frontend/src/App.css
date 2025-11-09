@@ -265,10 +265,6 @@ header h1 {
   border-color: #667eea;
 }
 
-.clinical-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-}
 
 .clinical-label {
   font-size: 0.875rem;
@@ -412,4 +408,127 @@ footer p {
   .feature-name {
     font-size: 0.8rem;
   }
+}
+
+/* Nemotron Agent Results Styles */
+.agent-summary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.agent-summary h3 {
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.agent-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.agent-results {
+  margin-top: 2rem;
+}
+
+.agent-results h3 {
+  color: #1f2937;
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+}
+
+.agent-section {
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s;
+}
+
+.agent-section:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.agent-section h4 {
+  color: #374151;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.agent-content {
+  color: #4b5563;
+  line-height: 1.8;
+  font-size: 0.95rem;
+}
+
+.agent-content p {
+  margin-bottom: 1rem;
+}
+
+.agent-content strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.agent-content h5 {
+  color: #1f2937;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.agent-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.agent-content li {
+  margin-bottom: 0.5rem;
+  color: #4b5563;
+}
+
+.agent-content br {
+  content: "";
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.agent-meta {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #1e40af;
+}
+
+.agent-meta strong {
+  color: #1e40af;
+  font-weight: 700;
 }

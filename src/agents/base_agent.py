@@ -30,6 +30,9 @@ class BaseAgent:
         """Mark agent as started"""
         self.status = 'running'
         self.start_time = datetime.now()
+        print(f"\n{'='*70}")
+        print(f"🤖 {self.name} Agent - STARTING")
+        print(f"{'='*70}")
 
     def complete(self, result: Dict[str, Any]):
         """
@@ -42,6 +45,28 @@ class BaseAgent:
         self.end_time = datetime.now()
         self.result = result
 
+        duration = (self.end_time - self.start_time).total_seconds()
+        print(f"✅ {self.name} Agent - COMPLETED ({duration:.2f}s)")
+
+        # Show result summary
+        if 'content' in result:
+            content_preview = result['content'][:150] if len(result['content']) > 150 else result['content']
+            print(f"   📄 Output: {content_preview}...")
+        elif 'plan' in result:
+            plan_preview = result['plan'][:150] if len(result['plan']) > 150 else result['plan']
+            print(f"   📋 Plan: {plan_preview}...")
+        elif 'explanation' in result:
+            exp_preview = result['explanation'][:150] if len(result['explanation']) > 150 else result['explanation']
+            print(f"   💡 Explanation: {exp_preview}...")
+        elif 'treatment_plan' in result:
+            plan_preview = result['treatment_plan'][:150] if len(result['treatment_plan']) > 150 else result['treatment_plan']
+            print(f"   💊 Treatment: {plan_preview}...")
+        elif 'trajectory_analysis' in result:
+            traj_preview = result['trajectory_analysis'][:150] if len(result['trajectory_analysis']) > 150 else result['trajectory_analysis']
+            print(f"   📊 Risk: {traj_preview}...")
+
+        print(f"{'='*70}\n")
+
     def fail(self, error: str):
         """
         Mark agent as failed
@@ -52,6 +77,8 @@ class BaseAgent:
         self.status = 'failed'
         self.end_time = datetime.now()
         self.result = {'error': error}
+        print(f"❌ {self.name} Agent - FAILED: {error}")
+        print(f"{'='*70}\n")
 
     def get_status(self) -> Dict[str, Any]:
         """
