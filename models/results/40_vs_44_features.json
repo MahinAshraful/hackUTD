@@ -1,0 +1,24 @@
+{
+  "original_model": {
+    "features": 44,
+    "includes_placeholders": true,
+    "problem": "RPDE, DFA, PPE, GNE are hardcoded"
+  },
+  "new_model": {
+    "features": 40,
+    "includes_placeholders": false,
+    "removed": [
+      "RPDE",
+      "DFA",
+      "PPE",
+      "GNE"
+    ],
+    "metrics": {
+      "accuracy": 0.85,
+      "precision": 0.8181818181818182,
+      "recall": 0.9,
+      "f1": 0.8571428571428571,
+      "roc_auc": 0.9099999999999999
+    }
+  }
+}

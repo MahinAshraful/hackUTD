@@ -1,0 +1,16 @@
+[
+  "Jitter_rel",
+  "Jitter_abs",
+  "Jitter_RAP",
+  "Jitter_PPQ",
+  "Shim_loc",
+  "Shim_dB",
+  "Shim_APQ3",
+  "Shim_APQ5",
+  "Shi_APQ11",
+  "HNR05",
+  "HNR15",
+  "HNR25",
+  "HNR35",
+  "HNR38"
+]

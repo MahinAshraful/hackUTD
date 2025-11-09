@@ -1,0 +1,66 @@
+{
+  "best_model": "SVM_Linear",
+  "best_metrics": {
+    "model_name": "SVM_Linear",
+    "tier": 3,
+    "best_params": {
+      "C": 0.1
+    },
+    "cv_accuracy_mean": 0.85,
+    "cv_accuracy_std": 0.097182531580755,
+    "cv_precision_mean": 0.8695238095238096,
+    "cv_recall_mean": 0.8333333333333334,
+    "cv_f1_mean": 0.8477855477855478,
+    "cv_roc_auc_mean": 0.8833333333333334,
+    "test_accuracy": 0.75,
+    "test_precision": 0.6666666666666666,
+    "test_recall": 1.0,
+    "test_f1": 0.8,
+    "test_roc_auc": 0.9199999999999999,
+    "confusion_matrix": [
+      [
+        5,
+        5
+      ],
+      [
+        0,
+        10
+      ]
+    ],
+    "training_time": 0.044944047927856445
+  },
+  "all_results": {
+    "XGBoost": {
+      "model_name": "XGBoost",
+      "tier": 1,
+      "best_params": {
+        "colsample_bytree": 1.0,
+        "learning_rate": 0.01,
+        "max_depth": 3,
+        "n_estimators": 200,
+        "subsample": 1.0
+      },
+      "cv_accuracy_mean": 0.8166666666666668,
+      "cv_accuracy_std": 0.062360956446232345,
+      "cv_precision_mean": 0.8076190476190476,
+      "cv_recall_mean": 0.8333333333333334,
+      "cv_f1_mean": 0.8172494172494174,
+      "cv_roc_auc_mean": 0.9194444444444445,
+      "test_accuracy": 0.7,
+      "test_precision": 0.75,
+      "test_recall": 0.6,
+      "test_f1": 0.6666666666666666,
+      "test_roc_auc": 0.7949999999999999,
+      "confusion_matrix": [
+        [
+          8,
+          2
+        ],
+        [
+          4,
+          6
+        ]
+      ],
+      "training_time": 4.402456998825073,
+      "feature_importance": {
+        "MFCC5": 
