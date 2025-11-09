@@ -233,6 +233,74 @@ header h1 {
   color: #374151;
 }
 
+.clinical-markers {
+  margin-bottom: 2rem;
+}
+
+.clinical-markers h3 {
+  margin-bottom: 1.5rem;
+  color: #1f2937;
+  font-size: 1.3rem;
+}
+
+.clinical-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.clinical-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.clinical-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  border-color: #667eea;
+}
+
+.clinical-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.clinical-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.clinical-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.clinical-status {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.clinical-desc {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
 .features {
   margin-bottom: 2rem;
 }

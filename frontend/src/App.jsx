@@ -217,6 +217,46 @@ function App() {
               <strong>Recommendation:</strong> {result.recommendation}
             </div>
 
+            {result.clinical_features && (
+              <div className="clinical-markers">
+                <h3>Clinical Voice Markers</h3>
+                <div className="clinical-grid">
+                  <div className="clinical-card">
+                    <div className="clinical-icon">📊</div>
+                    <div className="clinical-label">Jitter</div>
+                    <div className="clinical-value">{result.clinical_features.jitter.toFixed(2)}%</div>
+                    <div className="clinical-status">
+                      {result.clinical_features.jitter < 1.0 ? '✅ Excellent' :
+                       result.clinical_features.jitter < 2.0 ? '⚠️ Borderline' : '❌ Elevated'}
+                    </div>
+                    <div className="clinical-desc">Voice frequency stability</div>
+                  </div>
+
+                  <div className="clinical-card">
+                    <div className="clinical-icon">〰️</div>
+                    <div className="clinical-label">Shimmer</div>
+                    <div className="clinical-value">{result.clinical_features.shimmer.toFixed(2)}%</div>
+                    <div className="clinical-status">
+                      {result.clinical_features.shimmer < 5.0 ? '✅ Good' :
+                       result.clinical_features.shimmer < 10.0 ? '⚠️ Moderate' : '❌ High'}
+                    </div>
+                    <div className="clinical-desc">Voice amplitude variation</div>
+                  </div>
+
+                  <div className="clinical-card">
+                    <div className="clinical-icon">🎵</div>
+                    <div className="clinical-label">HNR</div>
+                    <div className="clinical-value">{result.clinical_features.hnr.toFixed(1)} dB</div>
+                    <div className="clinical-status">
+                      {result.clinical_features.hnr > 20 ? '✅ Excellent' :
+                       result.clinical_features.hnr > 15 ? '✅ Good' : '⚠️ Phone Quality'}
+                    </div>
+                    <div className="clinical-desc">Harmonic-to-noise ratio</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {result.feature_importance && (
               <div className="features">
                 <h3>Top Contributing Features</h3>
