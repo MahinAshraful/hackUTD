@@ -57,35 +57,78 @@ def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_random_clinical_data():
+def generate_random_clinical_data(high_risk=False):
     """
     Generate random clinical data for demo
-    DEMO MODE: Always shows VERY LOW risk (<2%) for reassuring demo
+
+    Args:
+        high_risk: If True, generate HIGH/MODERATE risk data (for uploaded files)
+                   If False, generate VERY LOW risk data (for recorded voice)
     """
-    # DEMO MODE: Always generate VERY HEALTHY values
-    # Excellent jitter values (well below 1%)
-    jitter = random.uniform(0.25, 0.65)  # Excellent: <1%
+    if high_risk:
+        # DEMO MODE: Generate HIGH/MODERATE risk values for uploaded files
+        # Elevated jitter values (above 1%)
+        jitter = random.uniform(1.8, 3.5)  # Elevated: >1.5%
 
-    # Excellent shimmer values (well below 5%)
-    shimmer = random.uniform(2.5, 4.5)  # Excellent: <5%
+        # Elevated shimmer values (above 5%)
+        shimmer = random.uniform(6.5, 12.0)  # Elevated: >5%
 
-    # Excellent HNR values (high is good)
-    hnr = random.uniform(19.0, 25.0)  # Excellent: >15 dB
+        # Lower HNR values (lower is worse)
+        hnr = random.uniform(10.0, 16.0)  # Borderline to low
 
-    # VERY LOW Parkinson's probability (<2%)
-    pd_prob = random.uniform(0.005, 0.018)  # 0.5% to 1.8%
+        # HIGH/MODERATE Parkinson's probability (40-75%)
+        pd_prob = random.uniform(0.40, 0.75)  # 40% to 75%
 
-    risk_level = 'VERY LOW'
+        # Determine risk level
+        if pd_prob > 0.60:
+            risk_level = 'HIGH'
+        else:
+            risk_level = 'MODERATE'
 
-    return {
-        'jitter': round(jitter, 2),
-        'shimmer': round(shimmer, 2),
-        'hnr': round(hnr, 1),
-        'pd_probability': round(pd_prob, 3),  # 3 decimals for <2%
-        'healthy_probability': round(1 - pd_prob, 3),
-        'risk_level': risk_level,
-        'prediction': 0  # Always healthy
-    }
+        recommendation = (
+            'Voice analysis shows elevated markers for Parkinson\'s disease. '
+            'Recommend comprehensive neurological evaluation and specialist consultation. '
+            'Early intervention can significantly improve outcomes.'
+        )
+
+        return {
+            'jitter': round(jitter, 2),
+            'shimmer': round(shimmer, 2),
+            'hnr': round(hnr, 1),
+            'pd_probability': round(pd_prob, 3),
+            'healthy_probability': round(1 - pd_prob, 3),
+            'risk_level': risk_level,
+            'prediction': 1,  # Positive prediction
+            'recommendation': recommendation
+        }
+    else:
+        # DEMO MODE: Always generate VERY HEALTHY values for recorded voice
+        # Excellent jitter values (well below 1%)
+        jitter = random.uniform(0.25, 0.65)  # Excellent: <1%
+
+        # Excellent shimmer values (well below 5%)
+        shimmer = random.uniform(2.5, 4.5)  # Excellent: <5%
+
+        # Excellent HNR values (high is good)
+        hnr = random.uniform(19.0, 25.0)  # Excellent: >15 dB
+
+        # VERY LOW Parkinson's probability (<2%)
+        pd_prob = random.uniform(0.005, 0.018)  # 0.5% to 1.8%
+
+        risk_level = 'VERY LOW'
+
+        recommendation = 'Excellent voice characteristics. All markers well within healthy range. No signs of concern detected.'
+
+        return {
+            'jitter': round(jitter, 2),
+            'shimmer': round(shimmer, 2),
+            'hnr': round(hnr, 1),
+            'pd_probability': round(pd_prob, 3),  # 3 decimals for <2%
+            'healthy_probability': round(1 - pd_prob, 3),
+            'risk_level': risk_level,
+            'prediction': 0,  # Always healthy
+            'recommendation': recommendation
+        }
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -132,9 +175,17 @@ def predict():
     file.save(filepath)
 
     try:
+        # Detect if this is a recorded file vs uploaded file
+        # Recorded files from frontend are named 'recording.webm'
+        is_recorded = filename.lower() == 'recording.webm'
+
         # DEMO MODE: Generate random clinical data
-        print(f"📊 Generating random clinical data for {filename}...")
-        demo_data = generate_random_clinical_data()
+        if is_recorded:
+            print(f"🎤 Recorded voice detected: {filename} → Generating VERY LOW risk...")
+            demo_data = generate_random_clinical_data(high_risk=False)
+        else:
+            print(f"📁 Uploaded file detected: {filename} → Generating HIGH risk...")
+            demo_data = generate_random_clinical_data(high_risk=True)
 
         # Clean up uploaded file
         os.remove(filepath)
@@ -146,8 +197,8 @@ def predict():
             'hnr': demo_data['hnr']
         }
 
-        # Generate recommendation
-        recommendation = 'Excellent voice characteristics. All markers well within healthy range. No signs of concern detected.'
+        # Get recommendation from demo_data
+        recommendation = demo_data.get('recommendation', 'Analysis complete.')
 
         print(f"✅ Generated {demo_data['risk_level']} risk profile (PD: {demo_data['pd_probability']:.2%})")
 
@@ -218,9 +269,17 @@ def predict_enhanced():
         # Get patient ID from request (or use default)
         patient_id = request.form.get('patient_id', 'demo_patient_001')
 
+        # Detect if this is a recorded file vs uploaded file
+        # Recorded files from frontend are named 'recording.webm'
+        is_recorded = filename.lower() == 'recording.webm'
+
         # DEMO MODE: Generate random clinical data
-        print(f"📊 Generating random clinical data for {filename}...")
-        demo_data = generate_random_clinical_data()
+        if is_recorded:
+            print(f"🎤 Recorded voice detected: {filename} → Generating VERY LOW risk...")
+            demo_data = generate_random_clinical_data(high_risk=False)
+        else:
+            print(f"📁 Uploaded file detected: {filename} → Generating HIGH risk...")
+            demo_data = generate_random_clinical_data(high_risk=True)
 
         # Clean up uploaded file
         os.remove(filepath)
@@ -236,8 +295,8 @@ def predict_enhanced():
         # In real implementation, these would come from audio analysis
         voice_features = np.random.randn(44).astype('float32')
 
-        # Generate recommendation
-        recommendation = 'Excellent voice characteristics. All markers well within healthy range. No signs of concern detected.'
+        # Get recommendation from demo_data
+        recommendation = demo_data.get('recommendation', 'Analysis complete.')
 
         # Prepare ML result for agents
         ml_result = {
