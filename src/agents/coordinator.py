@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent Coordinator - Runs multi-agent workflow
+Agent Coordinator - Runs multi-agent workflow with parallel execution
 """
 
 from typing import Dict, Any, List, Callable
@@ -10,6 +10,8 @@ from .research_agent import ResearchAgent
 from .risk_agent import RiskAssessmentAgent
 from .explainer_agent import ExplainerAgent
 from .report_agent import ReportGeneratorAgent
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 # Import RAG-enhanced agents
 try:
@@ -63,7 +65,7 @@ class AgentCoordinator:
     def run(self, ml_result: Dict[str, Any],
             progress_callback: Callable = None) -> Dict[str, Any]:
         """
-        Run complete multi-agent workflow
+        Run complete multi-agent workflow with PARALLEL EXECUTION
 
         Args:
             ml_result: ML model prediction result
@@ -73,6 +75,8 @@ class AgentCoordinator:
         Returns:
             Complete analysis with all agent results
         """
+        start_time = time.time()
+
         context = {
             'ml_result': ml_result
         }
@@ -93,25 +97,108 @@ class AgentCoordinator:
                 'explainer', 'research', 'risk', 'treatment', 'monitoring', 'report'
             ])
 
-            # Step 2: Run agents in sequence
-            for agent_name in agent_sequence:
-                if agent_name in self.agents and agent_name != 'orchestrator':
-                    # Update context with previous results
-                    self._update_context(context, results)
+            # Step 2: PARALLEL EXECUTION - Run independent agents concurrently
+            # Define dependency groups (agents that can run in parallel)
+            parallel_groups = [
+                # Group 1: All independent agents (don't need each other's results)
+                ['explainer', 'research', 'risk'],
+                # Group 2: Agents that need Group 1 results
+                ['treatment', 'monitoring'],
+                # Group 3: Report needs all previous results
+                ['report']
+            ]
 
-                    # Run agent
-                    self._run_agent(agent_name, context, results, progress_callback)
+            for group in parallel_groups:
+                # Filter to only include agents in the sequence
+                agents_to_run = [a for a in group if a in agent_sequence and a in self.agents]
+
+                if not agents_to_run:
+                    continue
+
+                # Update context with previous results
+                self._update_context(context, results)
+
+                if len(agents_to_run) == 1:
+                    # Single agent - run directly
+                    self._run_agent(agents_to_run[0], context, results, progress_callback)
+                else:
+                    # Multiple agents - run in parallel
+                    print(f"🚀 Running {len(agents_to_run)} agents in parallel: {', '.join(agents_to_run)}")
+                    self._run_agents_parallel(agents_to_run, context, results, progress_callback)
 
             # Step 3: Generate final summary
             results['summary'] = self._generate_summary(results)
             results['success'] = True
+            results['total_duration'] = time.time() - start_time
+
+            print(f"✅ All agents completed in {results['total_duration']:.2f}s")
 
             return results
 
         except Exception as e:
             results['success'] = False
             results['error'] = str(e)
+            results['total_duration'] = time.time() - start_time
             return results
+
+    def _run_agents_parallel(self, agent_names: List[str], context: Dict,
+                            results: Dict, progress_callback: Callable = None):
+        """
+        Run multiple agents in parallel using ThreadPoolExecutor
+
+        Args:
+            agent_names: List of agent names to run
+            context: Shared context (read-only for agents)
+            results: Results dict to update
+            progress_callback: Optional progress callback
+        """
+        with ThreadPoolExecutor(max_workers=len(agent_names)) as executor:
+            # Submit all agents
+            futures = {
+                executor.submit(self._execute_agent, name, context): name
+                for name in agent_names
+            }
+
+            # Collect results as they complete
+            for future in as_completed(futures):
+                agent_name = futures[future]
+                try:
+                    agent_result = future.result()
+
+                    # Store result
+                    results['agent_results'][agent_name] = agent_result
+                    results['timeline'].append({
+                        'agent': agent_name,
+                        'status': self.agents[agent_name].status,
+                        'duration': agent_result.get('duration_seconds', 0)
+                    })
+
+                    # Notify completion
+                    if progress_callback:
+                        progress_callback(agent_name, self.agents[agent_name].status, agent_result)
+
+                    print(f"  ✓ {agent_name.capitalize()} completed")
+
+                except Exception as e:
+                    print(f"  ✗ {agent_name.capitalize()} failed: {e}")
+                    results['agent_results'][agent_name] = {
+                        'success': False,
+                        'error': str(e)
+                    }
+
+    def _execute_agent(self, agent_name: str, context: Dict) -> Dict[str, Any]:
+        """
+        Execute a single agent (used for parallel execution)
+
+        Args:
+            agent_name: Name of agent to execute
+            context: Execution context
+
+        Returns:
+            Agent result dict
+        """
+        agent = self.agents[agent_name]
+        return agent.execute(context)
 
     def _run_agent(self, agent_name: str, context: Dict, results: Dict,
                    progress_callback: Callable = None):

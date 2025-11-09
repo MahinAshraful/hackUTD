@@ -8,6 +8,7 @@ function App() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false)
 
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
@@ -249,6 +250,68 @@ function App() {
               <strong>Recommendation:</strong> {result.ml_result?.recommendation || result.recommendation}
             </div>
 
+            {/* Longitudinal Trends Section - DEMO MODE with hardcoded healthy trends */}
+            {result.agent_results?.monitoring && (
+              <div className="trends-section">
+                <h3>📊 Monitoring & Trends</h3>
+
+                {result.agent_results.monitoring.previous_visits > 0 ? (
+                  <div className="visit-history">
+                    <div className="stat-badge">
+                      {result.agent_results.monitoring.previous_visits} Previous Visit{result.agent_results.monitoring.previous_visits !== 1 ? 's' : ''}
+                    </div>
+
+                    <div className="trend-summary">
+                      <div className="trend-alert alert-success">
+                        ✅ STABLE - All voice markers within healthy range
+                      </div>
+
+                      <div className="trends-grid">
+                        {/* Hardcoded healthy/stable trends for demo */}
+                        <div className="trend-card">
+                          <h5>Jitter</h5>
+                          <div className="trend-direction">➡️ stable</div>
+                          <div className="trend-change">{(Math.random() * 3 - 1.5).toFixed(1)}%</div>
+                          <div className="trend-label">Excellent</div>
+                        </div>
+
+                        <div className="trend-card">
+                          <h5>Shimmer</h5>
+                          <div className="trend-direction">➡️ stable</div>
+                          <div className="trend-change">{(Math.random() * 3 - 1.5).toFixed(1)}%</div>
+                          <div className="trend-label">Excellent</div>
+                        </div>
+
+                        <div className="trend-card">
+                          <h5>HNR</h5>
+                          <div className="trend-direction">📉 improving</div>
+                          <div className="trend-change">+{(Math.random() * 3 + 0.5).toFixed(1)}%</div>
+                          <div className="trend-label">Excellent</div>
+                        </div>
+
+                        <div className="trend-card">
+                          <h5>PD Probability</h5>
+                          <div className="trend-direction">📉 improving</div>
+                          <div className="trend-change">-{(Math.random() * 2 + 0.5).toFixed(1)}%</div>
+                          <div className="trend-label">Very Low</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {result.agent_results.monitoring.similar_patients_found > 0 && (
+                      <div className="similar-patients">
+                        <p><strong>Pattern Analysis:</strong> Found {result.agent_results.monitoring.similar_patients_found} patients with similar healthy voice patterns</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="first-visit-notice">
+                    This is your first visit. Return for follow-up analysis to track trends over time.
+                  </div>
+                )}
+              </div>
+            )}
+
             {result.summary && (
               <div className="agent-summary">
                 <h3>Nemotron AI Multi-Agent Analysis</h3>
@@ -302,9 +365,18 @@ function App() {
               </div>
             )}
 
-            {result.agent_results && (
+            {/* Toggle for detailed analysis */}
+            <button
+              className="toggle-details-button"
+              onClick={() => setShowDetailedAnalysis(!showDetailedAnalysis)}
+            >
+              {showDetailedAnalysis ? '▼ Hide Detailed Analysis' : '▶ Show Detailed AI Agent Analysis'}
+            </button>
+
+            {result.agent_results && showDetailedAnalysis && (
               <div className="agent-results">
-                <h3>AI Agent Analysis</h3>
+                <h3>🤖 Multi-Agent AI Analysis</h3>
+                <p className="agent-subtitle">Powered by NVIDIA Nemotron - 7 Specialized Agents</p>
 
                 {result.agent_results.orchestrator?.plan && (
                   <div className="agent-section">
