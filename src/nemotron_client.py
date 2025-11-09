@@ -9,18 +9,21 @@ import json
 from typing import Dict, List, Any, Optional
 import requests
 from datetime import datetime
+import hashlib
+import time
 
 
 class NemotronClient:
     """Client for Nvidia Nemotron via NIM API"""
 
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, enable_cache: bool = True):
         """
         Initialize Nemotron client
 
         Args:
             api_key: Nvidia API key (defaults to env var NVIDIA_API_KEY)
             base_url: API base URL (defaults to Nvidia NIM endpoint)
+            enable_cache: Whether to enable response caching
         """
         self.api_key = api_key or os.getenv("NVIDIA_API_KEY", "demo-key-for-hackathon")
         self.base_url = base_url or os.getenv(
@@ -31,6 +34,13 @@ class NemotronClient:
         self.model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
         self.temperature = 0.7
         self.max_tokens = 2000
+
+        # Response caching
+        self.enable_cache = enable_cache
+        self.cache: Dict[str, Dict[str, Any]] = {}  # cache_key -> {response, timestamp}
+        self.cache_ttl = 3600  # 1 hour TTL
+        self.cache_hits = 0
+        self.cache_misses = 0
 
         # DEBUG: Show API key status
         print("🔑 Nemotron API Configuration:")
@@ -47,7 +57,45 @@ class NemotronClient:
             print(f"   💡 Set NVIDIA_API_KEY environment variable")
         print(f"   → Base URL: {self.base_url}")
         print(f"   → Model: {self.model}")
+        print(f"   → Caching: {'Enabled (1 hour TTL)' if self.enable_cache else 'Disabled'}")
         print()
+
+    def _generate_cache_key(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+        """Generate cache key from request parameters"""
+        # Create deterministic key from messages + params
+        key_data = {
+            'messages': messages,
+            'temperature': temperature,
+            'max_tokens': max_tokens,
+            'model': self.model
+        }
+        key_str = json.dumps(key_data, sort_keys=True)
+        return hashlib.md5(key_str.encode()).hexdigest()
+
+    def _get_cached_response(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        """Get cached response if valid"""
+        if not self.enable_cache or cache_key not in self.cache:
+            return None
+
+        cached = self.cache[cache_key]
+        age = time.time() - cached['timestamp']
+
+        # Check if cache is still valid
+        if age < self.cache_ttl:
+            self.cache_hits += 1
+            return cached['response']
+        else:
+            # Cache expired
+            del self.cache[cache_key]
+            return None
+
+    def _cache_response(self, cache_key: str, response: Dict[str, Any]):
+        """Cache a response"""
+        if self.enable_cache:
+            self.cache[cache_key] = {
+                'response': response,
+                'timestamp': time.time()
+            }
 
     def chat(
         self,
@@ -57,7 +105,7 @@ class NemotronClient:
         stream: bool = False,
     ) -> Dict[str, Any]:
         """
-        Send chat completion request to Nemotron
+        Send chat completion request to Nemotron with caching
 
         Args:
             messages: List of message dicts with 'role' and 'content'
@@ -68,6 +116,20 @@ class NemotronClient:
         Returns:
             Response dict with 'content' and metadata
         """
+        temp = temperature or self.temperature
+        tokens = max_tokens or self.max_tokens
+
+        # Check cache first
+        cache_key = self._generate_cache_key(messages, temp, tokens)
+        cached_response = self._get_cached_response(cache_key)
+
+        if cached_response:
+            print(f"   💾 Cache HIT (saved API call)")
+            cached_response['cached'] = True
+            return cached_response
+
+        self.cache_misses += 1
+
         # Use NVIDIA Build API endpoint for Nemotron
         url = "https://integrate.api.nvidia.com/v1/chat/completions"
 
@@ -91,18 +153,29 @@ class NemotronClient:
 
             result = response.json()
 
-            return {
+            response_dict = {
                 "success": True,
                 "content": result["choices"][0]["message"]["content"],
                 "model": result.get("model", self.model),
                 "usage": result.get("usage", {}),
                 "timestamp": datetime.now().isoformat(),
+                "cached": False
             }
+
+            # Cache the response
+            self._cache_response(cache_key, response_dict)
+
+            return response_dict
 
         except requests.exceptions.RequestException as e:
             # Fallback to intelligent mock response for demo
             print(f"⚠️  Nemotron API error (using fallback): {str(e)}")
-            return self._fallback_response(messages)
+            fallback = self._fallback_response(messages)
+
+            # Cache fallback responses too (avoid repeated API calls for same error)
+            self._cache_response(cache_key, fallback)
+
+            return fallback
 
     def _fallback_response(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         """
@@ -521,3 +594,25 @@ Month 9, 12, 18, 24: Quarterly Reviews
 
         response = self.chat(messages)
         return response["content"]
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get cache statistics"""
+        total_requests = self.cache_hits + self.cache_misses
+        hit_rate = (self.cache_hits / total_requests * 100) if total_requests > 0 else 0
+
+        return {
+            'cache_enabled': self.enable_cache,
+            'cache_size': len(self.cache),
+            'cache_hits': self.cache_hits,
+            'cache_misses': self.cache_misses,
+            'hit_rate_percent': round(hit_rate, 2),
+            'estimated_api_calls_saved': self.cache_hits,
+            'ttl_seconds': self.cache_ttl
+        }
+
+    def clear_cache(self):
+        """Clear all cached responses"""
+        self.cache.clear()
+        print(f"🗑️  Cache cleared ({self.cache_hits} hits, {self.cache_misses} misses)")
+        self.cache_hits = 0
+        self.cache_misses = 0

@@ -34,14 +34,19 @@ class TreatmentPlanningAgentRAG(BaseAgent):
             self.clinical_knowledge = None
             self.rag_enabled = False
 
-        # ReAct loop configuration
-        self.max_iterations = 3
+        # ReAct loop configuration - Dynamic mode
+        self.max_iterations = 5  # Increased for dynamic mode
         self.reasoning_log = []
+        self.observations = []  # Track all observations
+        self.citations = []  # Track RAG citations for explainability
 
     def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute treatment planning with ReAct loop"""
+        """Execute treatment planning with dynamic ReAct loop"""
         self.start()
         self.reasoning_log = []
+        self.observations = []
+        self.citations = []  # Reset citations
+        self.context = context  # Store for validation
 
         try:
             ml_result = context.get('ml_result', {})
@@ -52,11 +57,12 @@ class TreatmentPlanningAgentRAG(BaseAgent):
             # Get patient context (medications, etc.)
             patient_context = context.get('patient_context', {})
 
-            print(f"\n🔄 Starting ReAct Loop (max {self.max_iterations} iterations)")
+            print(f"\n🔄 Starting DYNAMIC ReAct Loop (max {self.max_iterations} iterations)")
             print(f"   Risk Level: {risk_level} ({pd_prob:.1%})")
+            print(f"   🤖 Agent will autonomously decide next actions\n")
 
-            # ReAct Loop
-            treatment_plan = self._react_loop(risk_level, pd_prob, clinical_features, patient_context)
+            # Dynamic ReAct Loop - Agent decides its own path
+            treatment_plan = self._dynamic_react_loop(risk_level, pd_prob, clinical_features, patient_context)
 
             # Search clinical trials (final action)
             trials = self._search_trials(risk_level)
@@ -70,6 +76,8 @@ class TreatmentPlanningAgentRAG(BaseAgent):
                 treatment_plan=treatment_plan,
                 reasoning_log=self.reasoning_log,
                 rag_used=self.rag_enabled,
+                citations=self.citations,  # Include citations for explainability
+                evidence_sources=self._format_citations_for_display(),
                 urgent=pd_prob > 0.6
             )
 
@@ -79,6 +87,250 @@ class TreatmentPlanningAgentRAG(BaseAgent):
         except Exception as e:
             self.fail(str(e))
             return self._fallback_treatment(context)
+
+    def _dynamic_react_loop(
+        self,
+        risk_level: str,
+        pd_prob: float,
+        clinical_features: Dict[str, Any],
+        patient_context: Dict[str, Any]
+    ) -> str:
+        """
+        Dynamic ReAct Loop - Agent autonomously decides next actions
+        Based on observations, not a fixed script
+        """
+        # Initial context for the agent
+        state = {
+            'risk_level': risk_level,
+            'pd_prob': pd_prob,
+            'clinical_features': clinical_features,
+            'patient_context': patient_context,
+            'goal_achieved': False,
+            'gathered_info': []
+        }
+
+        for iteration in range(1, self.max_iterations + 1):
+            print(f"\n   --- Iteration {iteration}/{self.max_iterations} ---")
+
+            # REASON: Let Nemotron decide what to do next
+            decision = self._reason_autonomous(state, iteration)
+
+            print(f"   🧠 REASON: {decision['reasoning']}")
+            print(f"   🎯 DECISION: {decision['decision']}")
+
+            self.reasoning_log.append({
+                'iteration': iteration,
+                'step': 'REASON',
+                'reasoning': decision['reasoning'],
+                'decision': decision['decision']
+            })
+
+            # Check if agent thinks it's done
+            if decision['decision'] == 'FINALIZE':
+                print(f"   ✅ Agent determined sufficient information gathered")
+                # ACT: Create final recommendation
+                final_plan = self._synthesize_final_plan(state)
+
+                self.reasoning_log.append({
+                    'iteration': iteration,
+                    'step': 'ACT',
+                    'action': 'FINALIZE',
+                    'content': 'Synthesized final treatment plan'
+                })
+
+                return final_plan
+
+            # ACT: Execute the decided action
+            observation = self._execute_dynamic_action(decision, state)
+
+            print(f"   🎬 ACT: {decision['action_type']}")
+            print(f"   👁️  OBSERVE: {observation[:150]}...")
+
+            self.reasoning_log.append({
+                'iteration': iteration,
+                'step': 'ACT',
+                'action_type': decision['action_type'],
+                'query': decision.get('query', 'N/A')
+            })
+
+            self.reasoning_log.append({
+                'iteration': iteration,
+                'step': 'OBSERVE',
+                'content': observation
+            })
+
+            # Update state with new observations
+            self.observations.append(observation)
+            state['gathered_info'].append({
+                'action': decision['action_type'],
+                'result': observation
+            })
+
+        # Max iterations reached - force finalization
+        print(f"\n   ⚠️  Max iterations reached - finalizing...")
+        return self._synthesize_final_plan(state)
+
+    def _reason_autonomous(self, state: Dict[str, Any], iteration: int) -> Dict[str, str]:
+        """
+        Let Nemotron autonomously decide the next action
+        This is TRUE agentic behavior - no predetermined path
+        """
+        # Build context for reasoning
+        observations_summary = "\n".join([
+            f"- {info['action']}: {info['result'][:200]}..."
+            for info in state['gathered_info']
+        ]) if state['gathered_info'] else "No information gathered yet"
+
+        patient_meds = state['patient_context'].get('current_medications', [])
+        meds_info = f"Patient medications: {', '.join(patient_meds)}" if patient_meds else "No patient medication data available"
+
+        reasoning_prompt = f"""You are an AI treatment planning agent using the ReAct pattern.
+
+**Current State:**
+- Risk Level: {state['risk_level']} ({state['pd_prob']:.1%} PD probability)
+- Iteration: {iteration}/{self.max_iterations}
+- {meds_info}
+
+**Information Gathered So Far:**
+{observations_summary}
+
+**Available Actions:**
+1. QUERY_GUIDELINES - Query clinical knowledge base for treatment protocols
+2. CHECK_SAFETY - Query for drug interactions and contraindications
+3. QUERY_SPECIFIC - Ask specific clinical question
+4. FINALIZE - Sufficient information, ready to create treatment plan
+
+**Your Task:**
+Analyze what you've learned so far and decide the NEXT best action. Consider:
+- Do you have treatment guidelines for this risk level?
+- Have you checked for drug safety/interactions?
+- Do you have enough information to make a safe recommendation?
+
+**Respond in this exact format:**
+REASONING: [Your reasoning about what's needed next]
+DECISION: [One of: QUERY_GUIDELINES, CHECK_SAFETY, QUERY_SPECIFIC, FINALIZE]
+QUERY: [If querying, what specific question to ask]
+"""
+
+        # Ask Nemotron to decide
+        response = self.nemotron.reason(reasoning_prompt)
+
+        # Parse response
+        decision = self._parse_reasoning_response(response, state)
+
+        return decision
+
+    def _parse_reasoning_response(self, response: str, state: Dict[str, Any]) -> Dict[str, str]:
+        """Parse Nemotron's reasoning response"""
+        lines = response.split('\n')
+
+        reasoning = ""
+        decision = "QUERY_GUIDELINES"  # Default
+        query = ""
+
+        for line in lines:
+            if line.startswith('REASONING:'):
+                reasoning = line.replace('REASONING:', '').strip()
+            elif line.startswith('DECISION:'):
+                decision_text = line.replace('DECISION:', '').strip().upper()
+                # Extract decision keyword
+                if 'FINALIZE' in decision_text:
+                    decision = 'FINALIZE'
+                elif 'CHECK_SAFETY' in decision_text or 'SAFETY' in decision_text:
+                    decision = 'CHECK_SAFETY'
+                elif 'QUERY_SPECIFIC' in decision_text or 'SPECIFIC' in decision_text:
+                    decision = 'QUERY_SPECIFIC'
+                else:
+                    decision = 'QUERY_GUIDELINES'
+            elif line.startswith('QUERY:'):
+                query = line.replace('QUERY:', '').strip()
+
+        # Generate appropriate query if not provided
+        if not query and decision != 'FINALIZE':
+            if decision == 'QUERY_GUIDELINES':
+                query = f"Treatment protocol for {state['risk_level']} risk Parkinson's (PD probability {state['pd_prob']:.1%})"
+            elif decision == 'CHECK_SAFETY':
+                meds = state['patient_context'].get('current_medications', [])
+                query = f"Drug interactions with Parkinson's medications. Patient on: {', '.join(meds) if meds else 'no medications'}"
+            elif decision == 'QUERY_SPECIFIC':
+                query = f"Additional clinical guidance for {state['risk_level']} risk case"
+
+        return {
+            'reasoning': reasoning or f"Iteration {len(state['gathered_info'])+1}: Need more clinical guidance",
+            'decision': decision,
+            'action_type': decision,
+            'query': query
+        }
+
+    def _execute_dynamic_action(self, decision: Dict[str, str], state: Dict[str, Any]) -> str:
+        """Execute the dynamically decided action with citation tracking"""
+        action_type = decision['decision']
+
+        if action_type in ['QUERY_GUIDELINES', 'CHECK_SAFETY', 'QUERY_SPECIFIC']:
+            if self.rag_enabled and decision.get('query'):
+                # Query RAG with citations
+                rag_result = self.clinical_knowledge.get_context_with_citations(
+                    decision['query'],
+                    n_results=2
+                )
+
+                # Track citations for explainability
+                self.citations.extend(rag_result.get('citations', []))
+
+                return rag_result['context']
+            else:
+                return f"Clinical guidance: Standard {state['risk_level']} risk management protocols recommend specialist consultation and evidence-based treatment selection."
+
+        return "No actionable observation"
+
+    def _format_citations_for_display(self) -> List[str]:
+        """Format citations for human-readable display"""
+        formatted = []
+
+        for citation in self.citations:
+            source = citation.get('source', 'Unknown')
+            category = citation.get('category', 'General')
+            relevance = citation.get('relevance_level', 'UNKNOWN')
+
+            citation_str = f"{source} ({category}) - Relevance: {relevance}"
+
+            if 'page' in citation:
+                citation_str += f", p.{citation['page']}"
+
+            formatted.append(citation_str)
+
+        # Return unique citations only
+        return list(set(formatted))
+
+    def _synthesize_final_plan(self, state: Dict[str, Any]) -> str:
+        """Synthesize final treatment plan from all gathered information"""
+        # Collect all observations
+        all_info = "\n\n".join([
+            f"**{info['action']}:**\n{info['result']}"
+            for info in state['gathered_info']
+        ])
+
+        synthesis_prompt = f"""Based on all the clinical information gathered, create a comprehensive treatment plan.
+
+**Patient Profile:**
+- Risk Level: {state['risk_level']} ({state['pd_prob']:.1%} PD probability)
+- Jitter: {state['clinical_features'].get('jitter', 0):.2f}%
+- Shimmer: {state['clinical_features'].get('shimmer', 0):.2f}%
+- HNR: {state['clinical_features'].get('hnr', 0):.1f} dB
+
+**Clinical Evidence Gathered:**
+{all_info}
+
+**Create a treatment plan with:**
+1. Immediate actions (timeframe specified)
+2. Pharmacological recommendations (if appropriate, with safety notes)
+3. Non-pharmacological interventions (therapy, lifestyle)
+4. Safety considerations and contraindications
+5. Monitoring recommendations
+
+Be specific, evidence-based, and actionable."""
+
+        return self.nemotron.reason(synthesis_prompt)
 
     def _react_loop(
         self,

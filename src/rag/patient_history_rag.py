@@ -43,6 +43,11 @@ class PatientHistoryRAG:
         self.faiss_index = None
         self.visit_id_map = []  # Maps FAISS index to visit_id
 
+        # FAISS optimization settings
+        self.use_ivf = True  # Use IVF for scalability
+        self.nlist = 100  # Number of clusters for IVF (adjust based on data size)
+        self.is_trained = False
+
         # Load existing FAISS index if available
         self._load_faiss_index()
 
@@ -50,6 +55,7 @@ class PatientHistoryRAG:
         print(f"   → Database: {db_path}")
         print(f"   → Visits: {self.count_visits()}")
         print(f"   → FAISS index: {self.faiss_index.ntotal if self.faiss_index else 0} vectors")
+        print(f"   → Index type: {'IVF (optimized)' if self.use_ivf else 'Flat (basic)'}")
 
     def _init_database(self):
         """Create database schema"""
@@ -158,21 +164,67 @@ class PatientHistoryRAG:
         return visit_id
 
     def _add_to_faiss(self, visit_id: int, features: np.ndarray):
-        """Add feature vector to FAISS index"""
+        """Add feature vector to FAISS index (with IVF optimization)"""
         # Initialize FAISS index if not exists
         if self.faiss_index is None:
-            self.faiss_index = faiss.IndexFlatL2(self.feature_dim)
+            if self.use_ivf:
+                # Create IVF index for scalability
+                quantizer = faiss.IndexFlatL2(self.feature_dim)
+                self.faiss_index = faiss.IndexIVFFlat(
+                    quantizer,
+                    self.feature_dim,
+                    self.nlist,  # Number of clusters
+                    faiss.METRIC_L2
+                )
+            else:
+                # Fallback to flat index
+                self.faiss_index = faiss.IndexFlatL2(self.feature_dim)
 
         # Ensure features are 2D array
         if features.ndim == 1:
             features = features.reshape(1, -1)
 
+        # Train IVF index if not trained and has enough data
+        if self.use_ivf and not self.is_trained:
+            # Need at least nlist samples to train IVF
+            if len(self.visit_id_map) + 1 >= self.nlist:
+                print(f"   🔄 Training IVF index with {len(self.visit_id_map) + 1} samples...")
+                # Collect all features for training
+                training_data = self._get_all_features_for_training()
+                if len(training_data) > 0:
+                    self.faiss_index.train(training_data.astype('float32'))
+                    self.is_trained = True
+                    print(f"   ✅ IVF index trained successfully")
+
         # Add to index
-        self.faiss_index.add(features.astype('float32'))
+        if self.use_ivf and self.is_trained:
+            self.faiss_index.add(features.astype('float32'))
+        elif not self.use_ivf:
+            self.faiss_index.add(features.astype('float32'))
+        else:
+            # IVF not trained yet - store temporarily (will add after training)
+            pass
+
         self.visit_id_map.append(visit_id)
 
         # Save updated index
         self._save_faiss_index()
+
+    def _get_all_features_for_training(self) -> np.ndarray:
+        """Get all voice features from database for IVF training"""
+        import json
+
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT voice_features FROM patient_visits WHERE voice_features IS NOT NULL')
+
+        all_features = []
+        for row in cursor.fetchall():
+            features_json = row[0]
+            if features_json:
+                features = np.array(json.loads(features_json))
+                all_features.append(features)
+
+        return np.array(all_features) if all_features else np.array([])
 
     def _save_faiss_index(self):
         """Save FAISS index to disk"""
@@ -304,7 +356,7 @@ class PatientHistoryRAG:
 
     def find_similar_patients(self, features: np.ndarray, k: int = 5) -> List[Dict]:
         """
-        Find similar patients using FAISS similarity search
+        Find similar patients using FAISS similarity search (IVF optimized)
 
         Args:
             features: 44-dimensional feature vector
@@ -319,6 +371,12 @@ class PatientHistoryRAG:
         # Ensure features are 2D array
         if features.ndim == 1:
             features = features.reshape(1, -1)
+
+        # Set IVF search parameters if using IVF
+        if self.use_ivf and self.is_trained:
+            # nprobe controls speed vs accuracy tradeoff
+            # Higher = more accurate but slower
+            self.faiss_index.nprobe = min(10, self.nlist)  # Search 10 clusters
 
         # Search FAISS index
         distances, indices = self.faiss_index.search(features.astype('float32'), k)

@@ -3,9 +3,27 @@
 Base Agent class for all specialized agents
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 import json
+import sys
+from pathlib import Path
+
+# Import validator and messenger
+sys.path.insert(0, str(Path(__file__).parent.parent))
+try:
+    from validators.medical_validator import validate_agent_output
+    VALIDATOR_AVAILABLE = True
+except ImportError:
+    VALIDATOR_AVAILABLE = False
+    print("⚠️  Medical validator not available")
+
+try:
+    from messaging.agent_messenger import messenger, MessageTypes
+    MESSENGER_AVAILABLE = True
+except ImportError:
+    MESSENGER_AVAILABLE = False
+    print("⚠️  Agent messenger not available")
 
 
 class BaseAgent:
@@ -25,6 +43,15 @@ class BaseAgent:
         self.start_time = None
         self.end_time = None
         self.result = None
+        self.context = {}  # Store context for validation
+        self.validation_result = None
+
+        # Register with messaging system
+        if MESSENGER_AVAILABLE:
+            messenger.register_agent(self.name)
+            self.messenger = messenger
+        else:
+            self.messenger = None
 
     def start(self):
         """Mark agent as started"""
@@ -36,11 +63,29 @@ class BaseAgent:
 
     def complete(self, result: Dict[str, Any]):
         """
-        Mark agent as complete
+        Mark agent as complete with validation
 
         Args:
             result: Agent execution result
         """
+        # Validate output if validator available
+        if VALIDATOR_AVAILABLE:
+            validation = validate_agent_output(self.name, result, self.context)
+            self.validation_result = validation
+
+            if not validation['is_valid']:
+                print(f"⚠️  VALIDATION FAILED: {validation['message']}")
+                # Add validation info to result
+                result['validation'] = validation
+            elif validation.get('warnings'):
+                print(f"⚠️  VALIDATION WARNINGS:")
+                for warning in validation['warnings']:
+                    print(f"     - {warning}")
+                result['validation'] = validation
+            else:
+                print(f"✅ Output validated successfully")
+                result['validation'] = validation
+
         self.status = 'completed'
         self.end_time = datetime.now()
         self.result = result
@@ -128,3 +173,70 @@ class BaseAgent:
             'timestamp': datetime.now().isoformat(),
             **kwargs
         }
+
+    # Messaging methods
+    def send_message(
+        self,
+        to_agent: str,
+        message_type: str,
+        content: Any,
+        priority: int = 0,
+        requires_response: bool = False
+    ) -> Optional[str]:
+        """
+        Send a message to another agent
+
+        Args:
+            to_agent: Recipient agent name
+            message_type: Type of message
+            content: Message content
+            priority: Priority (higher = more urgent)
+            requires_response: Whether response is required
+
+        Returns:
+            message_id or None if messenger unavailable
+        """
+        if not self.messenger:
+            return None
+
+        return self.messenger.send_message(
+            from_agent=self.name,
+            to_agent=to_agent,
+            message_type=message_type,
+            content=content,
+            priority=priority,
+            requires_response=requires_response
+        )
+
+    def receive_messages(self, max_messages: int = 10) -> List[Any]:
+        """
+        Process pending messages
+
+        Args:
+            max_messages: Maximum messages to process
+
+        Returns:
+            List of handler responses
+        """
+        if not self.messenger:
+            return []
+
+        return self.messenger.process_messages(self.name, max_messages)
+
+    def register_message_handler(self, message_type: str, handler: callable):
+        """
+        Register a handler for a specific message type
+
+        Args:
+            message_type: Type of message to handle
+            handler: Function to handle the message
+        """
+        if self.messenger:
+            self.messenger.register_handler(self.name, message_type, handler)
+
+    def has_pending_messages(self) -> bool:
+        """Check if agent has pending messages"""
+        if not self.messenger:
+            return False
+
+        return self.messenger.has_pending_messages(self.name)
