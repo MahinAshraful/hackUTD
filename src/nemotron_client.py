@@ -27,6 +27,11 @@ class NemotronClient:
             "NVIDIA_API_BASE", "https://api.nvcf.nvidia.com/v2/nvcf"
         )
 
+        # Model configuration - using latest Nemotron Super v1.5 (Nov 2025)
+        self.model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+        self.temperature = 0.7
+        self.max_tokens = 2000
+
         # DEBUG: Show API key status
         print("🔑 Nemotron API Configuration:")
         if self.api_key and self.api_key != "demo-key-for-hackathon":
@@ -41,13 +46,8 @@ class NemotronClient:
             print(f"   ⚠️  No API key found - using fallback mode")
             print(f"   💡 Set NVIDIA_API_KEY environment variable")
         print(f"   → Base URL: {self.base_url}")
-        print(f"   → Model: nvidia/llama-3.1-nemotron-70b-instruct")
+        print(f"   → Model: {self.model}")
         print()
-
-        # Model configuration
-        self.model = "nvidia/llama-3.1-nemotron-70b-instruct"
-        self.temperature = 0.7
-        self.max_tokens = 2000
 
     def chat(
         self,
@@ -68,15 +68,13 @@ class NemotronClient:
         Returns:
             Response dict with 'content' and metadata
         """
-        # Use proper NVIDIA API endpoint
+        # Use NVIDIA Build API endpoint for Nemotron
         url = "https://integrate.api.nvidia.com/v1/chat/completions"
-
-        # Alternative: If above doesn't work, try build.nvidia.com
-        # url = "https://api.nvcf.nvidia.com/v2/nvcf/pexec/functions/d6fe6881-973b-43d7-8f98-9713123c9b83"
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
         }
 
         payload = {
@@ -170,7 +168,7 @@ class NemotronClient:
 
 **Agent Activation Sequence:**
 1. ✓ Voice Analysis - Complete (ELEVATED MARKERS)
-2. → Research Agent - Latest treatment guidelines 2024
+2. → Research Agent - Latest treatment guidelines 2025
 3. → Risk Assessment - Urgent progression modeling
 4. → Treatment Planning - Clinical trials + medication options
 5. → Monitoring Agent - Intensive 3-month schedule
