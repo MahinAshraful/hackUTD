@@ -8,10 +8,18 @@ from src.nemotron_client import NemotronClient
 from .orchestrator import OrchestratorAgent
 from .research_agent import ResearchAgent
 from .risk_agent import RiskAssessmentAgent
-from .treatment_agent import TreatmentPlanningAgent
 from .explainer_agent import ExplainerAgent
 from .report_agent import ReportGeneratorAgent
-from .monitoring_agent import MonitoringAgent
+
+# Import RAG-enhanced agents
+try:
+    from .treatment_agent_rag import TreatmentPlanningAgentRAG
+    from .monitoring_agent_rag import MonitoringAgentRAG
+    RAG_AVAILABLE = True
+except ImportError:
+    from .treatment_agent import TreatmentPlanningAgent as TreatmentPlanningAgentRAG
+    from .monitoring_agent import MonitoringAgent as MonitoringAgentRAG
+    RAG_AVAILABLE = False
 
 
 class AgentCoordinator:
@@ -27,14 +35,19 @@ class AgentCoordinator:
         # Initialize Nemotron client
         self.nemotron = NemotronClient(api_key=nemotron_api_key)
 
-        # Initialize all agents
+        # Initialize all agents (using RAG-enhanced versions when available)
         self.orchestrator = OrchestratorAgent(self.nemotron)
         self.research = ResearchAgent(self.nemotron)
         self.risk = RiskAssessmentAgent(self.nemotron)
-        self.treatment = TreatmentPlanningAgent(self.nemotron)
+        self.treatment = TreatmentPlanningAgentRAG(self.nemotron)  # RAG-enhanced
         self.explainer = ExplainerAgent(self.nemotron)
         self.report = ReportGeneratorAgent(self.nemotron)
-        self.monitoring = MonitoringAgent(self.nemotron)
+        self.monitoring = MonitoringAgentRAG(self.nemotron)  # RAG-enhanced
+
+        if RAG_AVAILABLE:
+            print("✅ RAG-enhanced agents loaded (Treatment + Monitoring)")
+        else:
+            print("⚠️  Using standard agents (RAG not available)")
 
         # Agent registry
         self.agents = {

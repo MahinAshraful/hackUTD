@@ -29,3 +29,16 @@ sqlalchemy>=2.0.0
 
 # Utilities
 python-dotenv>=1.0.0
+
+# RAG & Vector Database
+chromadb>=0.4.22
+faiss-cpu>=1.7.4
+sentence-transformers>=2.3.1
+
+# Flask Backend
+flask>=3.0.0
+flask-cors>=4.0.0
+werkzeug>=3.0.0
+
+# HTTP Requests
+requests>=2.31.0

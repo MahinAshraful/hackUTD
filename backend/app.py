@@ -15,6 +15,10 @@ from werkzeug.utils import secure_filename
 sys.path.insert(0, str(Path(__file__).parent.parent))
 # DEMO MODE: Skip ML model, just use Nemotron agents
 from src.agents.coordinator import AgentCoordinator
+from src.rag.patient_history_rag import PatientHistoryRAG
+from datetime import datetime
+import numpy as np
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +34,16 @@ except Exception as e:
     print(f"⚠️  Multi-Agent System initialization warning: {e}")
     coordinator = None
     print("   (Fallback mode enabled)\n")
+
+# Initialize Patient History RAG
+print("📊 Loading Patient History Database...")
+try:
+    patient_history = PatientHistoryRAG()
+    print("✅ Patient History RAG ready!\n")
+except Exception as e:
+    print(f"⚠️  Patient History RAG initialization warning: {e}")
+    patient_history = None
+    print("   (History tracking disabled)\n")
 
 # Configuration
 UPLOAD_FOLDER = Path(__file__).parent / 'uploads'
@@ -201,6 +215,9 @@ def predict_enhanced():
     file.save(filepath)
 
     try:
+        # Get patient ID from request (or use default)
+        patient_id = request.form.get('patient_id', 'demo_patient_001')
+
         # DEMO MODE: Generate random clinical data
         print(f"📊 Generating random clinical data for {filename}...")
         demo_data = generate_random_clinical_data()
@@ -215,6 +232,10 @@ def predict_enhanced():
             'hnr': demo_data['hnr']
         }
 
+        # Generate fake 44-dimensional voice features for FAISS
+        # In real implementation, these would come from audio analysis
+        voice_features = np.random.randn(44).astype('float32')
+
         # Generate recommendation
         recommendation = 'Excellent voice characteristics. All markers well within healthy range. No signs of concern detected.'
 
@@ -227,7 +248,32 @@ def predict_enhanced():
             'risk_level': demo_data['risk_level'],
             'recommendation': recommendation,
             'clinical_features': clinical_features,
+            'voice_features': voice_features,  # For similarity search
             'filename': filename
+        }
+
+        # Save to patient history database
+        if patient_history:
+            try:
+                visit_id = patient_history.add_visit(
+                    patient_id=patient_id,
+                    visit_date=datetime.now().isoformat(),
+                    clinical_features=clinical_features,
+                    ml_result=ml_result,
+                    voice_features=voice_features,
+                    notes=f"Demo visit from {filename}"
+                )
+                print(f"✅ Saved visit to history (visit_id: {visit_id})")
+            except Exception as e:
+                print(f"⚠️  Error saving visit to history: {e}")
+
+        # Prepare context for agents
+        context = {
+            'ml_result': ml_result,
+            'patient_id': patient_id,
+            'patient_context': {
+                'current_medications': request.form.getlist('medications[]') if 'medications[]' in request.form else []
+            }
         }
 
         print(f"✅ Generated {demo_data['risk_level']} risk profile (PD: {demo_data['pd_probability']:.2%})")
@@ -236,7 +282,7 @@ def predict_enhanced():
         print(f"{'#'*80}\n")
 
         # Run multi-agent analysis
-        agent_results = coordinator.run(ml_result)
+        agent_results = coordinator.run(context['ml_result'])
 
         print(f"\n{'#'*80}")
         print(f"✅ MULTI-AGENT ANALYSIS COMPLETE!")
@@ -245,7 +291,24 @@ def predict_enhanced():
         print(f"   Pathway: {agent_results['summary']['pathway']}")
         print(f"{'#'*80}\n")
 
-        return jsonify(agent_results)
+        # Convert numpy arrays to lists for JSON serialization
+        def make_json_serializable(obj):
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, dict):
+                return {k: make_json_serializable(v) for k, v in obj.items()}
+            elif isinstance(obj, (list, tuple)):
+                return [make_json_serializable(item) for item in obj]
+            return obj
+
+        # Clean agent_results for JSON
+        clean_results = make_json_serializable(agent_results)
+
+        return jsonify(clean_results)
 
     except Exception as e:
         # Clean up file if analysis fails

@@ -129,9 +129,20 @@ class ResearchAgent(BaseAgent):
             }
 
             response = requests.get(url, params=params, timeout=10)
+
+            # Check if response is empty or not JSON
+            if not response.text or response.text.strip() == '':
+                print(f"⚠️  PubMed returned empty response")
+                return []
+
             response.raise_for_status()
 
-            data = response.json()
+            try:
+                data = response.json()
+            except ValueError as json_err:
+                print(f"⚠️  PubMed JSON parsing error: {json_err}")
+                return []
+
             results = []
 
             for paper_id in paper_ids:
@@ -142,14 +153,14 @@ class ResearchAgent(BaseAgent):
                         'title': paper_data.get('title', 'Unknown'),
                         'authors': self._extract_authors(paper_data),
                         'journal': paper_data.get('source', 'Unknown'),
-                        'year': paper_data.get('pubdate', 'Unknown')[:4],
+                        'year': paper_data.get('pubdate', 'Unknown')[:4] if paper_data.get('pubdate') else 'Unknown',
                         'url': f"https://pubmed.ncbi.nlm.nih.gov/{paper_id}/"
                     })
 
             return results
 
         except Exception as e:
-            print(f"Paper fetch error: {e}")
+            print(f"⚠️  Paper fetch error: {e}")
             return []
 
     def _extract_authors(self, paper_data: Dict) -> str:
