@@ -26,6 +26,19 @@ class NemotronClient:
         self.base_url = base_url or os.getenv('NVIDIA_API_BASE',
             'https://integrate.api.nvidia.com/v1')
 
+        # DEBUG: Show API key status
+        print("🔑 Nemotron API Configuration:")
+        if self.api_key and self.api_key != 'demo-key-for-hackathon':
+            # Mask the key for security
+            masked_key = self.api_key[:10] + "..." + self.api_key[-4:] if len(self.api_key) > 14 else "***"
+            print(f"   ✓ API Key loaded: {masked_key}")
+        else:
+            print(f"   ⚠️  No API key found - using fallback mode")
+            print(f"   💡 Set NVIDIA_API_KEY environment variable")
+        print(f"   → Base URL: {self.base_url}")
+        print(f"   → Model: nvidia/llama-3.1-nemotron-70b-instruct")
+        print()
+
         # Model configuration
         self.model = "nvidia/llama-3.1-nemotron-70b-instruct"
         self.temperature = 0.7
