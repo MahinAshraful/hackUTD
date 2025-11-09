@@ -7,10 +7,20 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pathlib import Path
 import os
+import sys
 from werkzeug.utils import secure_filename
+
+# Add parent directory to path to import src modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.parkinson_predictor import ParkinsonPredictor
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize predictor once at startup
+print("🚀 Loading Parkinson's Detection Model...")
+predictor = ParkinsonPredictor(model_type='phone')
+print("✅ Model loaded successfully!\n")
 
 # Configuration
 UPLOAD_FOLDER = Path(__file__).parent / 'uploads'
@@ -68,31 +78,41 @@ def predict():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
-    # TODO: Replace this with actual model prediction
-    # For now, hardcoded to return "No Parkinson's"
+    try:
+        # Run prediction
+        prediction_result = predictor.predict(filepath, return_details=True)
 
-    result = {
-        'success': True,
-        'prediction': 'healthy',
-        'confidence': 0.92,
-        'details': {
-            'parkinson_probability': 0.08,
-            'healthy_probability': 0.92,
-            'risk_level': 'low',
-            'message': 'Voice characteristics appear normal'
-        },
-        'features': {
-            'jitter': 0.0043,
-            'shimmer': 0.0689,
-            'hnr': 17.05
-        },
-        'filename': filename
-    }
+        # Clean up uploaded file
+        os.remove(filepath)
 
-    # Clean up uploaded file
-    os.remove(filepath)
+        # Return formatted result
+        if prediction_result['success']:
+            return jsonify({
+                'success': True,
+                'prediction': prediction_result['prediction'],
+                'pd_probability': prediction_result['pd_probability'],
+                'healthy_probability': prediction_result['healthy_probability'],
+                'risk_level': prediction_result['risk_level'],
+                'recommendation': prediction_result['recommendation'],
+                'feature_importance': prediction_result.get('feature_importance', {}),
+                'filename': filename
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': prediction_result.get('error', 'Prediction failed'),
+                'error_type': prediction_result.get('error_type', 'unknown')
+            }), 400
 
-    return jsonify(result)
+    except Exception as e:
+        # Clean up file if prediction fails
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
+        return jsonify({
+            'success': False,
+            'error': f'Prediction error: {str(e)}'
+        }), 500
 
 @app.route('/api/info', methods=['GET'])
 def info():
