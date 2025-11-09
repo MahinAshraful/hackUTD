@@ -17,12 +17,13 @@ class ParkinsonPredictor:
 
     def __init__(self, model_path=None, feature_stats_path=None):
         # Set default paths relative to project root
+        # Using RealData model trained on phone recordings (not UCI lab data)
         if model_path is None:
             project_root = Path(__file__).parent.parent
-            model_path = project_root / 'models/saved_models/LogisticRegression_L2_best.pkl'
+            model_path = project_root / 'models/saved_models/RealData_best.pkl'
         if feature_stats_path is None:
             project_root = Path(__file__).parent.parent
-            feature_stats_path = project_root / 'data/processed/feature_stats.json'
+            feature_stats_path = project_root / 'data/processed/real_data_feature_stats.json'
         """
         Initialize predictor with trained model
 
