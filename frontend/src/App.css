@@ -1,49 +1,60 @@
+* {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Helvetica Neue', Arial, sans-serif;
+}
+
 .app {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 2rem 1rem;
+  background: #f8f9fa;
+  padding: 0;
 }
 
 .container {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
 header {
-  text-align: center;
-  margin-bottom: 2rem;
-  color: white;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 2rem 3rem;
+  margin-bottom: 0;
 }
 
 header h1 {
-  font-size: 2.5rem;
+  font-size: 1.75rem;
   margin-bottom: 0.5rem;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  color: #1f2937;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
-  font-size: 1.1rem;
-  opacity: 0.95;
+  font-size: 0.95rem;
+  color: #6b7280;
+  font-weight: 400;
 }
 
 .card {
   background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  margin-bottom: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 2rem 3rem;
+  margin: 1.5rem 3rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .card h2 {
-  color: #374151;
+  color: #111827;
   margin-bottom: 1.5rem;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .card h3 {
-  color: #4b5563;
+  color: #374151;
   margin-bottom: 1rem;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .input-section {
@@ -57,20 +68,20 @@ header h1 {
 
 .upload-label {
   display: inline-block;
-  padding: 1rem 2rem;
-  background: #667eea;
+  padding: 0.75rem 1.5rem;
+  background: #2563eb;
   color: white;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  transition: all 0.3s;
+  transition: all 0.2s;
+  border: none;
 }
 
 .upload-label:hover {
-  background: #5568d3;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background: #1d4ed8;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
 
 .file-name {
@@ -199,13 +210,14 @@ header h1 {
 
 .risk-badge {
   display: inline-block;
-  padding: 0.75rem 2rem;
+  padding: 0.5rem 1.25rem;
   color: white;
-  border-radius: 50px;
-  font-size: 1.3rem;
-  font-weight: 700;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
   margin-bottom: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .probability {
@@ -219,18 +231,80 @@ header h1 {
 }
 
 .prob-value {
-  font-size: 3rem;
-  font-weight: 700;
-  color: #1f2937;
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #111827;
 }
 
 .recommendation {
-  background: white;
-  padding: 1rem;
-  border-radius: 8px;
-  border-left: 4px solid #3b82f6;
+  background: #f3f4f6;
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
+  border-left: 4px solid #2563eb;
   margin-bottom: 2rem;
   color: #374151;
+  font-size: 0.95rem;
+}
+
+.clinical-markers {
+  margin-bottom: 2rem;
+}
+
+.clinical-markers h3 {
+  margin-bottom: 1.5rem;
+  color: #1f2937;
+  font-size: 1.3rem;
+}
+
+.clinical-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.clinical-card {
+  background: #f9fafb;
+  padding: 1.5rem;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.clinical-card:hover {
+  border-color: #d1d5db;
+}
+
+
+.clinical-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.clinical-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.clinical-status {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.clinical-desc {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .features {
@@ -265,8 +339,8 @@ header h1 {
 
 .feature-bar {
   height: 100%;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  border-radius: 12px;
+  background: #2563eb;
+  border-radius: 4px;
   transition: width 0.5s ease;
 }
 
@@ -279,43 +353,45 @@ header h1 {
 
 .reset-button {
   width: 100%;
-  padding: 0.875rem;
-  background: #667eea;
+  padding: 0.75rem;
+  background: #6b7280;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
   cursor: pointer;
   margin-bottom: 1.5rem;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .reset-button:hover {
-  background: #5568d3;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background: #4b5563;
 }
 
 .disclaimer {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  padding: 1rem;
-  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fbbf24;
+  border-left: 4px solid #f59e0b;
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
   font-size: 0.85rem;
-  color: #92400e;
-  line-height: 1.5;
+  color: #78350f;
+  line-height: 1.6;
 }
 
 footer {
   text-align: center;
-  margin-top: 2rem;
-  color: white;
-  opacity: 0.9;
+  padding: 2rem;
+  margin-top: 3rem;
+  color: #6b7280;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
 }
 
 footer p {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  margin: 0;
 }
 
 @media (max-width: 640px) {
@@ -344,4 +420,127 @@ footer p {
   .feature-name {
     font-size: 0.8rem;
   }
+}
+
+/* Nemotron Agent Results Styles */
+.agent-summary {
+  background: #1e40af;
+  color: white;
+  padding: 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 2rem;
+}
+
+.agent-summary h3 {
+  color: white;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.agent-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.agent-results {
+  margin-top: 2rem;
+}
+
+.agent-results h3 {
+  color: #1f2937;
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+}
+
+.agent-section {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.agent-section:hover {
+  border-color: #d1d5db;
+}
+
+.agent-section h4 {
+  color: #111827;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.agent-content {
+  color: #374151;
+  line-height: 1.7;
+  font-size: 0.9rem;
+}
+
+.agent-content p {
+  margin-bottom: 1rem;
+}
+
+.agent-content strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.agent-content h5 {
+  color: #1f2937;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.agent-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.agent-content li {
+  margin-bottom: 0.5rem;
+  color: #4b5563;
+}
+
+.agent-content br {
+  content: "";
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.agent-meta {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  border-left: 3px solid #2563eb;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.agent-meta strong {
+  color: #111827;
+  font-weight: 600;
 }

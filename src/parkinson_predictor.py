@@ -15,32 +15,43 @@ class ParkinsonPredictor:
     Complete pipeline for Parkinson's disease risk prediction from voice
     """
 
-    def __init__(self, model_path=None, feature_stats_path=None):
-        # Set default paths relative to project root
-        if model_path is None:
-            project_root = Path(__file__).parent.parent
-            model_path = project_root / 'models/saved_models/LogisticRegression_L2_best.pkl'
-        if feature_stats_path is None:
-            project_root = Path(__file__).parent.parent
-            feature_stats_path = project_root / 'data/processed/feature_stats.json'
+    def __init__(self, model_path=None, scaler_path=None, model_type='phone'):
         """
         Initialize predictor with trained model
 
         Args:
             model_path: Path to trained model file
-            feature_stats_path: Path to feature normalization stats
+            scaler_path: Path to scaler file (for phone models)
+            model_type: 'phone' (default) or 'uci' for different model types
         """
+        # Set default paths based on model type
+        project_root = Path(__file__).parent.parent
+
+        if model_path is None:
+            if model_type == 'phone':
+                # Best phone model: RandomForest (lowest false positive rate: 51.8%)
+                model_path = project_root / 'models/phone_models/Phone_RandomForest.pkl'
+                if scaler_path is None:
+                    scaler_path = project_root / 'models/phone_models/Phone_scaler.pkl'
+            else:
+                # UCI model (for reference, has domain shift issues)
+                model_path = project_root / 'models/saved_models/LogisticRegression_L2_best.pkl'
+                scaler_path = None
+
         print("🚀 Initializing Parkinson's Predictor...")
+        print(f"   → Model type: {model_type.upper()}")
 
         # Load trained model
         print(f"   → Loading model: {model_path}")
         with open(model_path, 'rb') as f:
             self.model = pickle.load(f)
 
-        # Load feature statistics for normalization
-        print(f"   → Loading feature stats: {feature_stats_path}")
-        with open(feature_stats_path, 'r') as f:
-            self.feature_stats = json.load(f)
+        # Load scaler if provided
+        self.scaler = None
+        if scaler_path and Path(scaler_path).exists():
+            print(f"   → Loading scaler: {scaler_path}")
+            with open(scaler_path, 'rb') as f:
+                self.scaler = pickle.load(f)
 
         # Initialize feature extractor
         self.extractor = AudioFeatureExtractor(
@@ -57,7 +68,7 @@ class ParkinsonPredictor:
 
     def normalize_features(self, features):
         """
-        Normalize features using training statistics
+        Normalize features using scaler or training statistics
 
         Args:
             features: numpy array of 44 features
@@ -65,21 +76,12 @@ class ParkinsonPredictor:
         Returns:
             numpy array: normalized features
         """
-        normalized = np.zeros_like(features)
+        # If scaler is available, use it
+        if self.scaler is not None:
+            return self.scaler.transform(features.reshape(1, -1))[0]
 
-        for i, feature_name in enumerate(self.extractor.feature_names):
-            if feature_name in self.feature_stats:
-                mean = self.feature_stats[feature_name]['mean']
-                std = self.feature_stats[feature_name]['std']
-
-                if std > 0:
-                    normalized[i] = (features[i] - mean) / std
-                else:
-                    normalized[i] = 0
-            else:
-                normalized[i] = features[i]
-
-        return normalized
+        # Otherwise, return features as-is (for models trained with their own scaler)
+        return features
 
     def predict(self, audio_path, return_details=True):
         """
